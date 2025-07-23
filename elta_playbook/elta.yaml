@@ -1,0 +1,97 @@
+- name: Network Objects
+  hosts: gws
+  connection: httpapi
+  vars_files:
+    - objects_vars.yaml
+
+  tasks:
+    - name: Create Lab Networks Group
+      check_point.mgmt.cp_mgmt_group:
+        name: "Lab_Networks"
+        auto_publish_session: true
+        wait_for_task: yes
+
+    - name: Create Lab Networks
+      check_point.mgmt.cp_mgmt_network:
+        name: "Net_{{ item }}"
+        subnet: "{{ item }}"
+        mask_length: 24
+        groups:
+          - Lab_Networks
+        auto_publish_session: true
+      loop: "{{ networks }}"
+      loop_control:
+        label: "Created network: {{ item}}/24"
+
+    - name: Add No-Nat
+      check_point.mgmt.cp_mgmt_nat_rule:
+        name: "No NAT rule for Lab Networks"
+        enabled: true
+        original_destination: Lab_Networks
+        original_source: Lab_Networks
+        package: Standard 
+        auto_publish_session: true
+        position: "top"
+
+    - name: Create Host Objects
+      check_point.mgmt.cp_mgmt_hosts:
+        config:
+          name: "{{ item.key }}"
+          ip_address: "{{ item.value }}"
+          nat_settings:
+            auto_rule: true
+            ipv4_address: "{{ gw_attrs[inventory_hostname][item.key] }}" 
+            method: "static"
+          auto_publish_session: yes
+        state: "replaced" 
+      loop: "{{ objects | dict2items }}"
+      loop_control:
+        label: " Creating {{ item.key }} with IP:{{ item.value }} and NAT: {{ gw_attrs[inventory_hostname][item.key] }}"
+
+- name: GetIntefaces, Publish and Install to All
+  hosts: gws
+  connection: httpapi
+  tasks:
+    - name: Get Interfaces without Topology
+      check_point.mgmt.cp_mgmt_get_interfaces:
+        target_name: "Standalone"
+        with_topology: false
+        wait_for_task: yes
+
+    - name: Publish
+      check_point.mgmt.cp_mgmt_publish:
+        wait_for_task: yes
+
+    - name: Install Policy
+      check_point.mgmt.cp_mgmt_install_policy:
+        access: true
+        policy_package: standard
+        targets:
+        - Standalone
+        threat_prevention: true
+        wait_for_task: yes
+
+- name: Change Hostnames
+  hosts: gws
+  connection: httpapi
+  vars:
+    ansible_network_os: check_point.gaia.checkpoint
+  vars_files:
+    - objects_vars.yaml
+  tasks:
+    - name: Add PODX Suffix
+      check_point.gaia.cp_gaia_hostname:
+        name: "{{ gw_attrs[inventory_hostname]['Hostname'] }}" 
+
+- name: Add helpful aliases
+  hosts: gws 
+  connection: ssh
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_ssh_transfer: piped
+  tasks:
+  - name: Adding alamo telnet alias
+    ansible.builtin.blockinfile:
+      path: /home/admin/.bashrc
+      insertafter: EOF
+      block: 'alias auth="telnet alamo-gw.ts.checkpoint.com 259"'

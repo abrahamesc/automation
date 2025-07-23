@@ -1,0 +1,62 @@
+---
+objects:
+  A-Host: 192.168.10.200
+  DC1: 192.168.10.100
+  
+
+gw_attrs:
+  gw1:
+    Hostname: "POD1_Standalone"
+    DC1: 172.25.64.6
+    A-Host: 172.25.64.7
+    
+   
+  gw2:
+    Hostname: "POD2_Standalone"
+    DC1: 172.25.64.11
+    A-Host: 172.25.64.12
+    
+
+  gw3:
+    Hostname: "POD3_Standalone"
+    DC1: 172.25.64.16
+    A-Host: 172.25.64.17
+    
+    
+  gw4:
+    Hostname: "POD4_Standalone"
+    DC1: 172.25.64.21
+    A-Host: 172.25.64.22
+    
+
+  gw5:
+    Hostname: "POD5_Standalone"
+    DC1: 172.25.64.26
+    A-Host: 172.25.64.27
+    
+    
+  gw6:
+    Hostname: "POD6_Standalone"
+    DC1: 172.25.64.31
+    A-Host: 172.25.64.32
+    
+
+  gw7:
+    Hostname: "POD7_Standalone"
+    DC1: 172.25.64.36
+    A-Host: 172.25.64.37
+    
+
+  gw8:
+    Hostname: "POD8_Standalone"
+    DC1: 172.25.64.41
+    A-Host: 172.25.64.42
+    
+
+networks:
+  - 192.168.10.0
+  - 192.168.11.0
+  - 192.168.12.0
+  - 192.168.13.0
+  - 10.1.1.0
+

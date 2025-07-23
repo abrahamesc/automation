@@ -1,0 +1,43 @@
+---
+- name: AD Lab Infra
+  hosts: win
+  vars_files:
+    vars_win.yml
+  tasks:
+    - name: Create IA_LAB OU
+      microsoft.ad.ou:
+        name: IA_LAB
+        protect_from_deletion: false
+        state: present
+
+    - name: output the domain cn variable
+      ansible.builtin.debug:
+        msg: "{{ domain_cn }}"
+
+    - name: Create 10 groups
+      microsoft.ad.group:
+        name: group_{{item}}
+        path: OU=IA_LAB,{{ domain_cn }}
+        scope: global
+        state: present
+      loop: "{{ range(0, 10) }}"
+      loop_control:
+        label: "Creating group_{{item}}"
+
+    - name: Create 10 users
+      microsoft.ad.user:
+       name: user_{{item}}
+       upn: user_{{item}}@{{domain_name}}
+       password: password_test
+       path: OU=IA_LAB,{{domain_cn}}
+       state: present
+       groups:
+         set:
+           - group_{{item}}
+           - Domain Users
+      loop: "{{ range(0, 10)}}"
+      loop_control:
+        label: "Creating user_{{item}}"
+
+
+

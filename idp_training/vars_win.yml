@@ -1,0 +1,6 @@
+domain_name: test.com
+split_domain: "{{ domain_name | split('.') }}"
+net_bios_name: "{{ split_domain[0][0:15]}}"
+domain_cn_three: DC={{ split_domain[0] }},DC={{ split_domain[1] }},DC={{ split_domain[2] }}
+domain_cn_two: DC={{ split_domain[0] }},DC={{ split_domain[1] }}
+domain_cn: "{{ domain_cn_two if split_domain | length == 2 else domain_cn_three }}"

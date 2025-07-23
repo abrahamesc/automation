@@ -1,0 +1,14 @@
+---
+- name: CPUSE
+  hosts: gws
+  connection: httpapi
+  vars:
+    jumbo_name: "Check_Point_R81_20_JUMBO_HF_MAIN_Bundle_T76_FULL.tgz" 
+  tasks:
+    - name: Show packages
+      check_point.mgmt.cp_mgmt_install_software_package:
+        name: "{{ jumbo_name }}" 
+        package_location: automatic
+        targets:
+          - Standalone
+        wait_for_task: true

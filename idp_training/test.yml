@@ -1,0 +1,10 @@
+- hosts: localhost
+  vars:
+    domain_name: test.com
+    split_domain: "{{ domain_name | split('.') }}"
+    domain_cn: DC={{ split_domain[0] }},DC={{ split_domain[1] }},DC={{ split_domain[2] }}
+  tasks:
+    - name: Loop with range functions
+      ansible.builtin.debug:
+        msg: group_{{ item }} 
+      loop: "{{ range(0, 10)}}"

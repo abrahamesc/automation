@@ -1,0 +1,17 @@
+- name: Publish and Install to All
+  hosts: gws
+  connection: httpapi
+  tasks:
+    - name: Publish
+      check_point.mgmt.cp_mgmt_publish:
+        wait_for_task: yes
+
+    - name: Install Policy
+      check_point.mgmt.cp_mgmt_install_policy:
+        access: true
+        policy_package: standard
+        targets:
+        - Standalone
+        threat_prevention: true
+        wait_for_task: yes
+

@@ -1,0 +1,18 @@
+---
+- name: CPUSE
+  hosts: gws
+  connection: httpapi
+  tasks:
+    - name: Show packages
+      check_point.mgmt.cp_mgmt_show_software_packages_per_targets:
+        targets:
+          - Standalone
+        display:
+          installed: "no"
+          category: "jumbo"
+        wait_for_task: true
+      register: cp_jumbo_data
+  
+    - name: Print the available packages
+      debug:
+        var: cp_jumbo_data
