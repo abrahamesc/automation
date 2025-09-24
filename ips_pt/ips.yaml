@@ -1,0 +1,50 @@
+- name: Network Objects
+  hosts: gws
+  connection: httpapi
+  vars_files:
+    - objects_vars.yaml
+
+  tasks:
+    - name: Add Policy Package
+      check_point.mgmt.cp_mgmt_package:
+        access: true
+        color: dark green 
+        comments: Created by Ansible script
+        name: PT-Policy
+        state: present
+        threat_prevention: true
+        threat_layer:
+          - add:
+             name:
+        auto_publish_session: true 
+
+
+    - name: Creating TP Profile 
+      check_point.mgmt.cp_mgmt_threat_profile:
+        active_protections_performance_impact: high
+        active_protections_severity: Low or above
+        confidence_level_high: Prevent
+        confidence_level_medium: Prevent
+        confidence_level_low: Prevent
+        ips: true
+        anti_bot: false
+        anti_virus: false
+        name: Profile_Lab_3
+        state: present
+        auto_publish_session: true
+
+    # - name: Change TP Rule with Profile_Lab_3
+    #   check_point.mgmt.cp_mgmt_threat_rule:
+    #     layer: "IPS-PT-Policy Threat Prevention"
+    #     name: "Ansible TP Rule"
+    #     position: 1
+    #     action: Profile_Lab_3
+    #     state: present
+    #     auto_publish_session: true
+
+        
+
+
+
+
+

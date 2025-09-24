@@ -1,0 +1,17 @@
+[gws]
+gw1
+#gw2
+#gw3
+#gw4
+#gw5
+#gw6
+#gw7
+#gw8
+
+[gws:vars]
+ansible_httpapi_use_ssl=True
+ansible_httpapi_validate_certs=False
+ansible_user=admin
+ansible_password=vpn123
+ansible_network_os=check_point.mgmt.checkpoint
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
