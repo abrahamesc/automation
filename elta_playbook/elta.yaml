@@ -34,16 +34,15 @@
         position: "top"
 
     - name: Create Host Objects
-      check_point.mgmt.cp_mgmt_hosts:
-        config:
-          name: "{{ item.key }}"
-          ip_address: "{{ item.value }}"
-          nat_settings:
-            auto_rule: true
-            ipv4_address: "{{ gw_attrs[inventory_hostname][item.key] }}" 
-            method: "static"
-          auto_publish_session: yes
-        state: "replaced" 
+      check_point.mgmt.cp_mgmt_host:
+        state: present
+        name: "{{ item.key }}"
+        ip_address: "{{ item.value }}"
+        nat_settings:
+          auto_rule: true
+          ipv4_address: "{{ gw_attrs[inventory_hostname][item.key] }}"
+          method: "static"
+        auto_publish_session: true
       loop: "{{ objects | dict2items }}"
       loop_control:
         label: " Creating {{ item.key }} with IP:{{ item.value }} and NAT: {{ gw_attrs[inventory_hostname][item.key] }}"
