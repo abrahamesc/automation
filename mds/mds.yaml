@@ -1,0 +1,306 @@
+---
+- name: MDS Global
+  hosts: mds
+  connection: httpapi
+  gather_facts: false
+  tasks:
+    - name: Configure IP range
+      check_point.mgmt.cp_mgmt_mds:
+        name: UNSC-MDS
+        ip_pool_first: 172.25.64.81
+        ip_pool_last: 172.25.64.85
+        auto_publish_session: true
+        color: firebrick
+        wait_for_task: true
+
+    - name: Create Administrators
+      check_point.mgmt.cp_mgmt_administrator:
+        name: "{{ item }}"
+        authentication_method: "check point password"
+        auto_publish_session: true
+        multi_domain_profile: "Multi-Domain Super User"
+        password: 
+        state: present
+      loop:
+        - abe
+        - ant
+
+    - name: Create the TE Appliance Domain
+      check_point.mgmt.cp_mgmt_add_domain:
+        name: "TE-Appliances"
+        servers:
+          - name: "TE-MGMT"
+            multi_domain_server: "UNSC-MDS"
+            active: true
+            ip_address: "172.25.64.82"
+            type: "management server"
+        color: "dark green"
+        auto_publish_session: true
+
+    - name: Create Main Domain
+      check_point.mgmt.cp_mgmt_add_domain:
+        name: "ONI-Main"
+        servers:
+          - name: "ONI-MGMT"
+            multi_domain_server: UNSC-MDS
+            active: true
+            ip_address: 172.25.64.81
+            type: "management server"
+        color: "purple"
+        auto_publish_session: true
+
+
+
+    - name: Adding Trusted Clients
+      check_point.mgmt.cp_mgmt_trusted_client:
+        name: "Any-Main"
+        type: any
+        state: present
+        auto_publish_session: true
+        multi_domain_server_trusted_client: true
+        domains_assignment: "ONI-Main"
+
+    - name: Adding Trusted Clients
+      check_point.mgmt.cp_mgmt_trusted_client:
+        name: "Any-TE"
+        type: any
+        state: present
+        auto_publish_session: true
+        multi_domain_server_trusted_client: true
+        domains_assignment: "TE-Appliances"
+
+- name: TE-Appliances Domain Configuration
+  hosts: mds
+  connection: httpapi
+  gather_facts: false
+  vars:
+    ansible_checkpoint_domain: "TE-Appliances"
+  tasks:
+
+    - name: Generating HTTPS Inspection Certificate
+      check_point.mgmt.cp_mgmt_add_outbound_inspection_certificate:
+        base64_password: 
+        is_default: true
+        issued_by: www.te-inspect.ca
+        name: InspectionCert
+        valid_from: '2026-04-29'
+        valid_to: '2038-04-29'
+        auto_publish_session: true
+
+    - name: Create TE GW Objects
+      check_point.mgmt.cp_mgmt_simple_gateway:
+        ip_address: "{{ item.value.ip }}"
+        name: "{{ item.value.name }}"
+        color: "{{ item.value.color }}"
+        anti_bot: true
+        anti_virus: true
+        url_filtering: true
+        application_control: true
+        ips: true
+        ips_settings:
+          activation_mode: according-to-policy
+        threat_emulation: true
+        threat_extraction: true
+        enable_https_inspection: true
+        one_time_password: true
+        state: present
+        auto_publish_session: true
+        wait_for_task: true
+
+      loop: "{{ gateways | dict2items }}"
+      vars:
+        gateways:
+          te1:
+            name: TE-1000-691
+            ip: 172.25.64.100
+            color: aquamarine
+          te2:
+            name: TE-2000X-3168
+            ip: 172.25.64.101
+            color: dark orange
+          te3:
+            name: TE-2000XN-27377
+            ip: 172.25.64.102
+            color: red
+
+    - name: Create TE-GWs-Pol
+      check_point.mgmt.cp_mgmt_package:
+        name: TE-GWs-Pol
+        access: true
+        threat_prevention: true
+        auto_publish_session: true
+
+    - name: Clean-up to Accept
+      check_point.mgmt.cp_mgmt_access_rule:
+        name: "Cleanup rule"
+        position: 1
+        source: any
+        layer: "TE-GWs-Pol Network"
+        destination: any
+        action: accept
+        auto_publish_session: true
+
+    - name: Configure APPI Layer
+      check_point.mgmt.cp_mgmt_access_layer:
+        name: APPI
+        shared: true
+        state: present
+        implicit_cleanup_action: accept
+        auto_publish_session: true
+        add_default_rule: false
+        applications_and_url_filtering: true
+
+    - name: Configure parent APPI rule
+      check_point.mgmt.cp_mgmt_access_rule:
+        name: "APPI parent"
+        position: 1
+        source: any
+        destination: any
+        service:
+          - http
+          - https
+        action: "Apply Layer"
+        inline_layer: APPI
+        layer: "TE-GWs-Pol Network"
+        auto_publish_session: true
+
+    - name: APPI - Block Social
+      check_point.mgmt.cp_mgmt_access_rule:
+        name: Drop Social
+        position: 1
+        layer: APPI
+        action: drop
+        source: any
+        destination: any
+        service: Social Networking
+        auto_publish_session: true
+        user_check:
+          interaction: "Blocked Message - Access Control"
+        track:
+          type: "Detailed Log"
+
+          
+    - name: APPI - Accept Any Clean up 
+      check_point.mgmt.cp_mgmt_access_rule:
+        name: Cleanup Rule
+        position: 2
+        layer: APPI
+        action: accept
+        source: any
+        service: any
+        destination: any
+        auto_publish_session: true
+        track:
+          type: "Log"
+
+
+
+- name: ONI Configuration 
+  hosts: mds
+  connection: httpapi
+  gather_facts: false
+  vars:
+    ansible_checkpoint_domain: "ONI-Main"
+  tasks:
+
+    - name: Generating HTTPS Inspection Certificate
+      check_point.mgmt.cp_mgmt_add_outbound_inspection_certificate:
+        base64_password: 
+        is_default: true
+        issued_by: www.oni-inspect.ca
+        name: InspectionCert
+        valid_from: '2026-04-29'
+        valid_to: '2038-04-29'
+        auto_publish_session: true
+
+    - name: Create Sierra117 GW
+      check_point.mgmt.cp_mgmt_simple_gateway:
+        ip_address: 172.25.64.50
+        name: "Sierra117"
+        color: "dark green"
+        anti_bot: true
+        anti_virus: true
+        url_filtering: true
+        application_control: true
+        ips: true
+        ips_settings:
+          activation_mode: according-to-policy
+        threat_emulation: true
+        threat_extraction: true
+        enable_https_inspection: true
+        one_time_password: true
+        state: present
+        auto_publish_session: true
+        wait_for_task: true
+
+    - name: Create Main-Sierra-Pol
+      check_point.mgmt.cp_mgmt_package:
+        name: Main-Sierra-Pol
+        access: true
+        threat_prevention: true
+        installation_targets: "Sierra117"
+        auto_publish_session: true
+
+    - name: Clean-up to Accept
+      check_point.mgmt.cp_mgmt_access_rule:
+        name: "Cleanup rule"
+        position: 1
+        source: any
+        layer: "Main-Sierra-Pol Network"
+        destination: any
+        action: accept
+        auto_publish_session: true
+
+    - name: Configure APPI Layer
+      check_point.mgmt.cp_mgmt_access_layer:
+        name: APPI
+        shared: true
+        state: present
+        implicit_cleanup_action: accept
+        auto_publish_session: true
+        add_default_rule: false
+        applications_and_url_filtering: true
+
+    - name: Configure parent APPI rule
+      check_point.mgmt.cp_mgmt_access_rule:
+        name: "APPI parent"
+        position: 1
+        source: any
+        destination: any
+        service:
+          - http
+          - https
+        action: "Apply Layer"
+        inline_layer: APPI
+        layer: "Main-Sierra-Pol Network"
+        auto_publish_session: true
+
+    - name: APPI - Block Social
+      check_point.mgmt.cp_mgmt_access_rule:
+        name: Drop Social
+        position: 1
+        layer: APPI
+        action: drop
+        source: any
+        destination: any
+        service: Social Networking
+        auto_publish_session: true
+        user_check:
+          interaction: "Blocked Message - Access Control"
+        track:
+          type: "Detailed Log"
+
+          
+    - name: APPI - Accept Any Clean up 
+      check_point.mgmt.cp_mgmt_access_rule:
+        name: Cleanup Rule
+        position: 2
+        layer: APPI
+        action: accept
+        source: any
+        service: any
+        destination: any
+        auto_publish_session: true
+        track:
+          type: "Log"
+
